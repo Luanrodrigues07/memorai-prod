@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String   @id @default(cuid())
+  email              String   @unique
+  name               String   @default("")
+  avatarUrl          String? // foto do perfil (data URL ou link)
+  passwordHash       String? // null quando a conta é só Google
+  googleId           String?  @unique
+  googleRefreshToken String? // usado para ler o Google Calendar
+  activeChallengeId  String? // substitui o meta.activeId do Dexie
+  createdAt          DateTime @default(now())
+
+  tasks      Task[]
+  events     Event[]
+  challenges Challenge[]
+  logs       Log[]
+}
+
+model Task {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  text      String
+  done      Boolean  @default(false)
+  date      String? // dia da tarefa (YYYY-MM-DD); null = hoje
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+}
+
+model Event {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  text      String
+  date      String // YYYY-MM-DD
+  start     Int // minutos a partir da meia-noite
+  dur       Int // duração em minutos
+  done      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, date])
+}
+
+model Challenge {
+  id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  description String   @default("")
+  startDate   String // YYYY-MM-DD (o "start" do Dexie)
+  days        Int
+  rules       Json // string[]
+  createdAt   DateTime @default(now())
+
+  logs Log[]
+
+  @@index([userId])
+}
+
+model Log {
+  id          String    @id @default(cuid())
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  challengeId String
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  date        String // YYYY-MM-DD
+  values      Json // boolean[]
+
+  @@unique([challengeId, date])
+  @@index([userId])
+}

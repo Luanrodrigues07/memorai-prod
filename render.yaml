@@ -1,0 +1,28 @@
+# Blueprint do Render — um único serviço Node roda a API e serve o frontend.
+# Banco: Neon (Postgres) já existente; a DATABASE_URL é configurada no painel.
+services:
+  - type: web
+    name: memorai
+    runtime: node
+    plan: free
+    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build && pnpm db:deploy
+    startCommand: pnpm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      # Segredo de sessão — o Render gera um valor aleatório.
+      - key: JWT_SECRET
+        generateValue: true
+      # Preencher no painel do Render (marcados como "secret"):
+      - key: DATABASE_URL
+        sync: false
+      # A URL pública do app (ex.: https://memorai.onrender.com)
+      - key: CLIENT_ORIGIN
+        sync: false
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      - key: GOOGLE_CLIENT_SECRET
+        sync: false
+      # https://SEU-APP.onrender.com/api/auth/google/callback
+      - key: GOOGLE_REDIRECT_URI
+        sync: false

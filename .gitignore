@@ -1,0 +1,20 @@
+# deps
+node_modules/
+.pnpm-store/
+
+# builds
+dist/
+memorai-pkg/dist/
+server/dist/
+
+# ambiente / segredos (NUNCA subir)
+.env
+.env.*
+!.env.example
+server/.env
+
+# sistema / editor
+.DS_Store
+*.log
+.vscode/
+.idea/

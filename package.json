@@ -1,0 +1,22 @@
+{
+  "name": "memorai-workspace",
+  "private": true,
+  "version": "0.1.0",
+  "packageManager": "pnpm@11.20.0",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "concurrently -n api,web -c blue,magenta \"pnpm --filter memorai-server dev\" \"pnpm --filter memorai dev\"",
+    "dev:api": "pnpm --filter memorai-server dev",
+    "dev:web": "pnpm --filter memorai dev",
+    "db:migrate": "pnpm --filter memorai-server prisma migrate dev",
+    "db:studio": "pnpm --filter memorai-server prisma studio",
+    "build": "pnpm --filter memorai-server prisma generate && pnpm --filter memorai build && pnpm --filter memorai-server build",
+    "db:deploy": "pnpm --filter memorai-server prisma migrate deploy",
+    "start": "node server/dist/index.js"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
