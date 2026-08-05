@@ -5,8 +5,8 @@ services:
     name: memorai
     runtime: node
     plan: free
-    buildCommand: corepack enable && pnpm install --frozen-lockfile && pnpm build && pnpm db:deploy
-    startCommand: pnpm start
+    buildCommand: corepack enable && pnpm install --no-frozen-lockfile && pnpm build
+    startCommand: pnpm db:deploy && pnpm start
     envVars:
       - key: NODE_ENV
         value: production
