@@ -33,11 +33,17 @@ export default function CalendarWeek({ days, events, onOpenDay, targetCalendarId
     removeTask(task.id);
   }
 
-  // Abre a agenda posicionada por volta das 6h30 (dá pra rolar pra cima/baixo).
+  // Abre a agenda rolada pro horário atual (deixa o "agora" ~no meio da tela).
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
-    requestAnimationFrame(() => { el.scrollTop = (6.5 - HSTART) * HOURH; });
+    requestAnimationFrame(() => {
+      const now = new Date();
+      const nowMin = now.getHours() * 60 + now.getMinutes();
+      const nowTop = ((nowMin - HSTART * 60) / 60) * HOURH;
+      const target = nowTop - el.clientHeight * 0.4; // "agora" a ~40% do topo
+      el.scrollTop = Math.max(0, target);
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [days[0] && toKey(days[0])]);
 
