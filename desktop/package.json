@@ -1,0 +1,29 @@
+{
+  "name": "memorai-desktop",
+  "version": "1.0.1",
+  "description": "Memorai — app de Mac",
+  "main": "main.js",
+  "author": "Luan Rodrigues",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder --mac dmg"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.memorai.app",
+    "productName": "Memorai",
+    "directories": { "output": "release" },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.productivity",
+      "icon": "build/icon.png",
+      "identity": null
+    },
+    "dmg": {
+      "title": "Memorai"
+    }
+  }
+}

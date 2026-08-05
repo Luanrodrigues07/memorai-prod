@@ -6,6 +6,7 @@ node_modules/
 dist/
 memorai-pkg/dist/
 server/dist/
+desktop/release/
 
 # ambiente / segredos (NUNCA subir)
 .env
