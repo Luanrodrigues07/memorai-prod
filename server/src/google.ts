@@ -117,6 +117,17 @@ function addMinutes(date: string, minutes: number, add: number) {
   return { date: toKey(base), minutes: base.getHours() * 60 + base.getMinutes() };
 }
 
+// Lê a data e a hora "de parede" (local do evento) direto da string RFC3339 do Google,
+// SEM depender do fuso do servidor (na nuvem é UTC, o que deslocava os horários).
+function parseWall(dt: string): { date: string; min: number } {
+  const m = dt.match(/^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (!m) {
+    const d = new Date(dt);
+    return { date: toKey(d), min: d.getHours() * 60 + d.getMinutes() };
+  }
+  return { date: `${m[1]}-${m[2]}-${m[3]}`, min: Number(m[4]) * 60 + Number(m[5]) };
+}
+
 function normalizeEvent(
   ev: any,
   calendarId: string,
@@ -139,13 +150,11 @@ function normalizeEvent(
     };
   }
   if (ev.start?.dateTime && ev.end?.dateTime) {
-    const s = new Date(ev.start.dateTime);
-    const e = new Date(ev.end.dateTime);
-    const start = s.getHours() * 60 + s.getMinutes();
-    let dur = Math.round((e.getTime() - s.getTime()) / 60000);
+    const w = parseWall(ev.start.dateTime); // data + hora local do evento
+    let dur = Math.round((new Date(ev.end.dateTime).getTime() - new Date(ev.start.dateTime).getTime()) / 60000);
     if (dur <= 0) dur = 30;
     return {
-      id: ev.id, calendarId, text, date: toKey(s), start, dur,
+      id: ev.id, calendarId, text, date: w.date, start: w.min, dur,
       allDay: false, recurring, editable, color, ...extras, source: "google",
     };
   }

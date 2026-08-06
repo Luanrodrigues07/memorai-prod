@@ -207,7 +207,9 @@ function onReconnectError(err) {
   }
 }
 
-// Ações de escrita com update otimista em todas as queries ["calendar", ...] em cache.
+// Ações de escrita com update otimista em todas as queries ["calendar", ...].
+// Não recarregamos a agenda inteira a cada ação (era lento); a mudança fica no
+// cache na hora, e a agenda rebusca do Google só ao navegar de semana/período.
 export function useCalendarActions() {
   const qc = useQueryClient();
 
@@ -217,19 +219,22 @@ export function useCalendarActions() {
     );
   const snapshot = () => qc.getQueriesData({ queryKey: ["calendar"] });
   const restore = (snap) => snap.forEach(([key, data]) => qc.setQueryData(key, data));
-  const settle = () => qc.invalidateQueries({ queryKey: ["calendar"] });
+  const patchOne = (calendarId, eventId, upd) =>
+    patchCache((evs) => evs.map((e) => (e.id === eventId && e.calendarId === calendarId ? { ...e, ...upd } : e)));
 
   return {
     createEvent: async (calendarId, input) => {
       const snap = snapshot();
-      const temp = { id: "temp-" + Math.random().toString(36).slice(2), calendarId, source: "google", editable: true, color: "#4285F4", allDay: false, recurring: false, ...input };
+      const tempId = "temp-" + Math.random().toString(36).slice(2);
+      const temp = { id: tempId, calendarId, source: "google", editable: true, color: "#4285F4", allDay: false, recurring: false, ...input };
       patchCache((evs) => [...evs, temp]);
       try {
-        return await api.post("/calendar/events", { calendarId, ...input, tz: TZ });
+        const res = await api.post("/calendar/events", { calendarId, ...input, tz: TZ });
+        // troca o id temporário pelo real (sem recarregar a agenda)
+        patchOne(calendarId, tempId, { id: res?.id || tempId, meetLink: res?.meetLink ?? null });
+        return res;
       } catch (err) {
         restore(snap); onReconnectError(err); throw err;
-      } finally {
-        settle();
       }
     },
     updateEvent: async (calendarId, eventId, patch) => {
@@ -237,13 +242,13 @@ export function useCalendarActions() {
       // addMeet não é campo visual; não aplica no cache otimista.
       const visual = { ...patch };
       delete visual.addMeet;
-      patchCache((evs) => evs.map((e) => (e.id === eventId && e.calendarId === calendarId ? { ...e, ...visual } : e)));
+      patchOne(calendarId, eventId, visual);
       try {
-        return await api.patch(`/calendar/events/${enc(calendarId)}/${enc(eventId)}`, { ...patch, tz: TZ });
+        const res = await api.patch(`/calendar/events/${enc(calendarId)}/${enc(eventId)}`, { ...patch, tz: TZ });
+        if (res?.meetLink) patchOne(calendarId, eventId, { meetLink: res.meetLink });
+        return res;
       } catch (err) {
         restore(snap); onReconnectError(err); throw err;
-      } finally {
-        settle();
       }
     },
     deleteEvent: async (calendarId, eventId) => {
@@ -253,8 +258,6 @@ export function useCalendarActions() {
         await api.del(`/calendar/events/${enc(calendarId)}/${enc(eventId)}`);
       } catch (err) {
         restore(snap); onReconnectError(err); throw err;
-      } finally {
-        settle();
       }
     },
   };
