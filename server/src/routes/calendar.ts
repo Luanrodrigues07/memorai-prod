@@ -36,6 +36,11 @@ async function handleGoogleError(err: any, userId: string, res: any): Promise<bo
     res.status(403).json({ error: "reconnect" });
     return true;
   }
+  // Outros 403 (ex.: não é o organizador da reunião, calendário só-leitura).
+  if (status === 403) {
+    res.status(403).json({ error: "Sem permissão para alterar este evento (você pode não ser o organizador da reunião)." });
+    return true;
+  }
   return false;
 }
 
@@ -93,6 +98,7 @@ const eventBody = z.object({
   location: z.string().max(500).optional(),
   description: z.string().max(4000).optional(),
   addMeet: z.boolean().optional(),
+  attendees: z.array(z.string().email()).max(100).optional(),
   tz: z.string().min(1),
 });
 
@@ -123,6 +129,7 @@ const patchBody = z.object({
   location: z.string().max(500).optional(),
   description: z.string().max(4000).optional(),
   addMeet: z.boolean().optional(),
+  attendees: z.array(z.string().email()).max(100).optional(),
   tz: z.string().min(1),
 });
 

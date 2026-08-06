@@ -99,6 +99,8 @@ export interface CalendarEvent {
   meetLink: string | null;
   location: string;
   description: string;
+  attendees: string[]; // e-mails dos convidados
+  organizerSelf: boolean; // se o usuário é o organizador (pode editar horário/convidados)
   source: "google";
 }
 
@@ -141,6 +143,8 @@ function normalizeEvent(
     meetLink: ev.hangoutLink ?? null,
     location: ev.location ?? "",
     description: ev.description ?? "",
+    attendees: (ev.attendees ?? []).map((a: any) => a.email).filter(Boolean),
+    organizerSelf: ev.organizer?.self === true || !ev.organizer, // sem organizer = evento simples do próprio user
   };
 
   if (ev.start?.date) {
@@ -208,6 +212,7 @@ export interface EventInput {
   location?: string;
   description?: string;
   addMeet?: boolean;
+  attendees?: string[]; // e-mails dos convidados
   tz: string;
 }
 
@@ -228,12 +233,15 @@ export async function createCalendarEvent(refreshToken: string, calendarId: stri
   const requestBody: any = buildRequestBody(i);
   if (i.location !== undefined) requestBody.location = i.location;
   if (i.description !== undefined) requestBody.description = i.description;
+  const hasGuests = Array.isArray(i.attendees);
+  if (hasGuests) requestBody.attendees = i.attendees!.map((email) => ({ email }));
   const wantMeet = i.addMeet === true;
   if (wantMeet) Object.assign(requestBody, meetRequest());
   const { data } = await calendar.events.insert({
     calendarId,
     requestBody,
     conferenceDataVersion: wantMeet ? 1 : 0,
+    sendUpdates: hasGuests ? "all" : "none", // avisa os convidados por e-mail
   });
   return data;
 }
@@ -249,6 +257,8 @@ export async function updateCalendarEvent(
   if (patch.text !== undefined) requestBody.summary = patch.text;
   if (patch.location !== undefined) requestBody.location = patch.location;
   if (patch.description !== undefined) requestBody.description = patch.description;
+  const hasGuests = Array.isArray(patch.attendees);
+  if (hasGuests) requestBody.attendees = patch.attendees!.map((email) => ({ email }));
   // Se qualquer campo de horário mudou, precisamos reenviar start+end completos.
   if (patch.date !== undefined || patch.start !== undefined || patch.dur !== undefined || patch.allDay !== undefined) {
     Object.assign(requestBody, timeBody(patch as EventInput));
@@ -260,6 +270,7 @@ export async function updateCalendarEvent(
     eventId,
     requestBody,
     conferenceDataVersion: wantMeet ? 1 : 0,
+    sendUpdates: hasGuests ? "all" : "none",
   });
   return data;
 }

@@ -202,9 +202,12 @@ export function useCalendarEvents(from, to, calendarIds) {
 }
 
 function onReconnectError(err) {
-  if (err?.message === "reconnect" || err?.status === 403 || err?.status === 401) {
+  if (err?.message === "reconnect") {
     alert("A conexão com o Google precisa ser renovada. Clique em \"Reconectar Google\" na Agenda.");
+    return;
   }
+  // Mostra o motivo (ex.: sem permissão pra mover a reunião) em vez de falhar em silêncio.
+  alert(err?.message || "Não foi possível salvar a alteração no Google Calendar.");
 }
 
 // Ações de escrita com update otimista em todas as queries ["calendar", ...].

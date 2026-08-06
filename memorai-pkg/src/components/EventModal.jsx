@@ -7,6 +7,9 @@ const parseTime = (s) => {
   return (h || 0) * 60 + (m || 0);
 };
 
+const parseGuests = (s) =>
+  [...new Set(s.split(/[\s,;]+/).map((x) => x.trim()).filter((x) => x.includes("@")))];
+
 // Modal de edição de um evento do Google Calendar.
 export default function EventModal({ event, onClose }) {
   const { updateEvent, deleteEvent } = useCalendarActions();
@@ -18,8 +21,12 @@ export default function EventModal({ event, onClose }) {
   const [startStr, setStartStr] = useState(fmt(event.start));
   const [endStr, setEndStr] = useState(fmt(Math.min(24 * 60, event.start + event.dur)));
   const [location, setLocation] = useState(event.location || "");
+  const [guests, setGuests] = useState((event.attendees || []).join(", "));
   const [meetLink, setMeetLink] = useState(event.meetLink || null);
   const [busy, setBusy] = useState(false);
+
+  // Só o organizador (ou evento simples do próprio user) pode mexer em convidados/horário.
+  const canManage = editable && event.organizerSelf !== false;
 
   // Fecha com ESC.
   useEffect(() => {
@@ -32,11 +39,15 @@ export default function EventModal({ event, onClose }) {
     if (!editable) return onClose();
     const start = parseTime(startStr);
     const dur = Math.max(15, parseTime(endStr) - start);
+    const patch = { text: title.trim() || "(sem título)", date, start, dur, location };
+    // Só envia convidados se o campo mudou (evita apagar convidados sem querer).
+    const originalGuests = (event.attendees || []).join(", ");
+    if (canManage && guests.trim() !== originalGuests.trim()) patch.attendees = parseGuests(guests);
     setBusy(true);
     try {
-      await updateEvent(event.calendarId, event.id, { text: title.trim() || "(sem título)", date, start, dur, location });
+      await updateEvent(event.calendarId, event.id, patch);
       onClose();
-    } finally { setBusy(false); }
+    } catch { /* o erro já é avisado */ } finally { setBusy(false); }
   };
 
   const addMeet = async () => {
@@ -69,6 +80,9 @@ export default function EventModal({ event, onClose }) {
 
         <div className="modalbody">
           {event.recurring && <div className="mrec">🔁 Evento recorrente — a alteração afeta só esta ocorrência.</div>}
+          {editable && event.organizerSelf === false && (
+            <div className="mrec">Você não é o organizador — talvez não consiga mudar horário ou convidados.</div>
+          )}
 
           <div className="mrow">
             <input type="date" value={date} disabled={!editable} onChange={(e) => setDate(e.target.value)} />
@@ -80,6 +94,15 @@ export default function EventModal({ event, onClose }) {
           </div>
           <div className="mrow">
             <input type="text" value={location} disabled={!editable} onChange={(e) => setLocation(e.target.value)} placeholder="Local (opcional)" />
+          </div>
+          <div className="mrow">
+            <input
+              type="text"
+              value={guests}
+              disabled={!canManage}
+              onChange={(e) => setGuests(e.target.value)}
+              placeholder="Convidados (e-mails separados por vírgula)"
+            />
           </div>
 
           <div className="mrow meet">
